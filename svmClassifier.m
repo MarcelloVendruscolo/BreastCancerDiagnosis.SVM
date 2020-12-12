@@ -1,50 +1,41 @@
-%Read and make the medical data points accessible
+% Read and make the medical data points accessible:
 dataframe = readmatrix('wbdc.csv');
 
-%Randomly distribute the data in 85% learning - 15% testing datasets
+% Randomly distribute/separate the avaialble data in 87.5% learning - 12.5% testing datasets:
 [nrows,ncols] = size(dataframe);
 ratio = 0.875;
-
-%Seeds for randomly dividing the medical dataset into learning and testing
-%rng(53);
-%rng(67);
-%rng(312);
-
-%Separation of the dataset
-idx = randperm(nrows);
+idx = randperm(nrows); % Perform permutation of the rows
 learning_dataframe = dataframe(idx(1:round(ratio*nrows)),:);
 testing_dataframe = dataframe(idx(round(ratio*nrows)+1:end),:);
 
-%Create label matrix and features matrix, respectively
+% Create label matrix and features matrix for training purposes, respectively:
 y_matrix_training = learning_dataframe(:,2);
 x_matrix_training = learning_dataframe(:,3:end);
 
-%Number of data points(l) and number of features(n), respectively
+% Number of data points (l) and number of features (n), respectively:
 l = size(x_matrix_training,1);
 n = size(x_matrix_training,2);
 
-%Array of C values
-%array_C = [0.0000000001 0.00001 0.001 1 100 1000 10000 1000000 1000000000000];
-array_C = (1000);
+% Array of C values to observe behaviour of classifier as this constant change values:
+array_C = [0.0000000001 0.00001 0.001 1 100 1000 10000 1000000 1000000000000];
 
-%Arrays for storing performance measurements for each value of C
+% Helper arrays to store performance measurements for each value of C:
 array_accuracy = zeros(length(array_C),1);
 array_sensitivity = zeros(length(array_C),1);
 array_specificity = zeros(length(array_C),1);
 
-%Iterate values of C and perform task
+% Iterate over the values of C and perform classification task minimise(1/2)*(x'Hx)+f'x:
 for iterator = 1:length(array_C)
     C = array_C(iterator);
-    disp(C)
     H = diag([ones(1, n), zeros(1, l + 1)]);
     f = [zeros(1,n), 0, C * ones(1,l)]';
     
-    %Constraints
+    % Constraints in the form Ax <= b:
     p = diag(y_matrix_training) * x_matrix_training;
     A = -[p y_matrix_training eye(l)];
     c = -ones(l,1);
     
-    %Bound
+    % Boundaries in the form lb <= x <= ub:
     lb = [-inf * ones(n+1,1); zeros(l,1)];
     
     options = optimoptions(@quadprog,'MaxIterations',500);
@@ -53,12 +44,15 @@ for iterator = 1:length(array_C)
     b = z(n+1,:);
     eps = z(n+2:end,:);
     
+    % Create true value and feature matrices for testing purposes, respectively:
     y_matrix_true = testing_dataframe(:,2);
     x_matrix_prediction = testing_dataframe(:,3:end);
     
+    % Create matrix to store predictions:
     number_predictions = size(x_matrix_prediction,1);
     y_matrix_prediction = zeros(number_predictions,1);
     
+    % Helper arrays to store construct a confusion matrix:
     condition_positive = 0;
     condition_negative = 0;
     true_positive = 0;
@@ -92,32 +86,22 @@ for iterator = 1:length(array_C)
     array_sensitivity(iterator) = true_positive*100/condition_positive;
     array_specificity(iterator) = true_negative*100/condition_negative;
 end
-%%
-figure
-scatter([1:71], y_matrix_true, 'filled')
-hold on
-scatter([1:71], y_matrix_prediction, 'filled')
-scatter([2,26,43,45,70], [y_matrix_prediction(2),y_matrix_prediction(26),y_matrix_prediction(43),y_matrix_prediction(45),y_matrix_prediction(70)], 'filled')
-hold off
-legend('True Value','Correct Prediction','Misclassification')
-xlabel('Patient Number')
-ylabel('Diagnosis')
 
+% Plot accuracy:
+figure();
+scatter(log(array_C(2:end)), array_accuracy(2:end), 'filled');
+hold on;
+plot(log(array_C(2:end)), array_accuracy(2:end));
+hold off;
+xlabel('Log C values');
+ylabel('Accuracy');
 
-%%
-figure
-scatter(log(array_C(2:end)), array_accuracy(2:end), 'filled')
-hold on
-plot(log(array_C(2:end)), array_accuracy(2:end))
-hold off
-xlabel('Log C values')
-ylabel('Accuracy')
-
-figure
-hold on
-plot(log(array_C(2:end)), array_sensitivity(2:end))
-plot(log(array_C(2:end)), array_specificity(2:end))
-hold off
-legend('Sensitivity','Specificity')
-xlabel('C values')
-ylabel('Percentage')
+% Plot sensitivity and specificity:
+figure();
+plot(log(array_C(2:end)), array_sensitivity(2:end));
+hold on;
+plot(log(array_C(2:end)), array_specificity(2:end));
+hold off;
+legend('Sensitivity','Specificity');
+xlabel('C values');
+ylabel('Percentage');
